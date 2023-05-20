@@ -7,6 +7,7 @@ import com.example.h2crud.repository.ITutorialRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,7 +21,7 @@ public class TutorialService implements ITutorialService{
     public List<TutorialResponseDTO> findAll(String title) {
         List<Tutorial> tutorials;
 
-        if (title.equals("")){
+        if (title == null){
             tutorials = tutorialRepository.findAll();
         } else {
             tutorials = tutorialRepository.findByTitleContaining(title);
@@ -36,12 +37,13 @@ public class TutorialService implements ITutorialService{
         if (tutorialData.isPresent()){
             tutorialResponseDTO = mapToTutorialResponseDTO(tutorialData.get());
         }
+
         return tutorialResponseDTO;
     }
 
     @Override
     public void saveTutorial(TutorialRequestDTO tutorialRequestDTO) {
-        Tutorial tutorial = mapToTutorial(tutorialRequestDTO);
+        Tutorial tutorial = mapTutorialRequestToTutorial(tutorialRequestDTO);
         try{
             tutorialRepository.save(tutorial);
         }catch (Exception e){
@@ -51,20 +53,48 @@ public class TutorialService implements ITutorialService{
 
     @Override
     public TutorialResponseDTO updateTutorial(Long id, TutorialRequestDTO tutorialRequestDTO) {
-        return null;
+        Optional<Tutorial> tutorialData = tutorialRepository.findById(id);//el registro que queremos actualizar
+        TutorialResponseDTO tutorialResponse = new TutorialResponseDTO();
+
+        if (tutorialData.isPresent()){
+            Tutorial tutorial = tutorialData.get();
+            tutorial.setTitle(tutorialRequestDTO.getTitle());
+            tutorial.setDescription(tutorialRequestDTO.getDescription());
+            tutorial.setPublished(tutorialRequestDTO.getPublished());
+            tutorialRepository.save(tutorial);//actualización en la base de datos
+            tutorialResponse = mapToTutorialResponseDTO(tutorial);
+        }
+        return tutorialResponse;
     }
 
     @Override
     public void deleteTutorial(Long id) {
-
+        try{
+            tutorialRepository.deleteById(id);
+            tutorialRepository.deleteAll();
+        }catch (Exception exception){
+            exception.printStackTrace();
+        }
     }
 
     @Override
     public List<TutorialResponseDTO> findByPublished(Boolean published) {
-        return null;
+        List<Tutorial> tutorials;
+        List<TutorialResponseDTO> tutorialResponses = new ArrayList<>();
+        try{
+            tutorials = tutorialRepository.findByPublished(published);
+            if (tutorials.isEmpty()){
+                throw new Exception();
+            }
+            tutorialResponses = tutorials.stream().map(this::mapToTutorialResponseDTO).toList();
+        }catch (Exception exception){
+            exception.printStackTrace();
+        }
+
+        return tutorialResponses;
     }
 
-    private Tutorial mapToTutorial(TutorialRequestDTO tutorialRequestDTO) {
+    private Tutorial mapTutorialRequestToTutorial(TutorialRequestDTO tutorialRequestDTO) {
         return Tutorial.builder()
                 .title(tutorialRequestDTO.getTitle())
                 .description(tutorialRequestDTO.getDescription())
